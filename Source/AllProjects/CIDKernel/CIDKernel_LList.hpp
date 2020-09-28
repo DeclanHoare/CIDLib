@@ -171,6 +171,8 @@ template <typename TElem> class TKrnlLList
             TElem* pRet = m_pCursor->m_pobjVal;
             m_pCursor->m_pobjVal = nullptr;
 
+            TNode* pPrev = nullptr;
+
             if (m_pCursor == m_pHead)
             {
                 //
@@ -186,12 +188,17 @@ template <typename TElem> class TKrnlLList
                 //  list to find the previous node so that we can patch around
                 //  the one being removed.
                 //
-                TNode* pPrev = m_pHead;
+                pPrev = m_pHead;
                 while (pPrev->m_pNext != m_pCursor)
                     pPrev = pPrev->m_pNext;
 
                 // Ok, now patch around the cursor node
                 pPrev->m_pNext = m_pCursor->m_pNext;
+            }
+
+            if (m_pCursor == m_pTail)
+            {
+                m_pTail = pPrev;
             }
 
             // And now we can delete the node and store the new one
