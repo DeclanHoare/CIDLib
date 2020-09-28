@@ -53,6 +53,7 @@ namespace CIDKernel_Thread_Linux
         TKrnlThread*            pkthrStarting;
         pthread_mutex_t*        pmtxStart;
         tCIDLib::TCh*           pszName;
+        TKrnlEvent*             pkevDeath;
     };
 
     // ---------------------------------------------------------------------------
@@ -109,6 +110,8 @@ namespace CIDKernel_Thread_Linux
 
         // Now fire it up
         const tCIDLib::EExitCodes eRet = pData->pfnCallBack(pData->pthrStarting, pData->pUserData);
+
+        pData->pkevDeath->bTrigger();
 
         delete pData;
 
@@ -446,6 +449,10 @@ TKrnlThread::bBeginThread(  const   TKrnlThread::TCallBack  pfnFunc
     }
 
     pthread_mutex_t mtxStart = PTHREAD_MUTEX_INITIALIZER;
+    if (!m_hthrThis.m_phthriThis->kevDeath.bCreate(tCIDLib::EEventStates::Reset, kCIDLib::False))
+    {
+        return kCIDLib::False;
+    }
 
     pthread_t tidTmp = kCIDLib::tidInvalid;
     CIDKernel_Thread_Linux::TStartupData* pStartupData = new CIDKernel_Thread_Linux::TStartupData;
@@ -455,6 +462,7 @@ TKrnlThread::bBeginThread(  const   TKrnlThread::TCallBack  pfnFunc
     pStartupData->pmtxStart = &mtxStart;
     pStartupData->pszName = TRawStr::pszReplicate(pszThreadName);
     pStartupData->pkthrStarting = this;
+    pStartupData->pkevDeath = &m_hthrThis.m_phthriThis->kevDeath;
 
     ::pthread_mutex_lock(&mtxStart);
 
@@ -665,10 +673,15 @@ TKrnlThread::bWaitEvOrDeath(        TKrnlEvent&         kevWait
                             ,       tCIDLib::TBoolean&  bDied
                             , const tCIDLib::TCard4     c4MilliSecs)
 {
-    // <TBD>
-    TKrnlError::SetLastError(kKrnlErrs::errcGen_NotSupported);
+    tCIDLib::TCard4 c4Which;
     bDied = kCIDLib::False;
-    return kCIDLib::False;
+
+    if (!TKrnlEvent::bWaitMultiple(kevWait, m_hthrThis.m_phthriThis->kevDeath, c4Which, c4MilliSecs))
+    {
+        return kCIDLib::False;
+    }
+    bDied = c4Which == 1;
+    return kCIDLib::True;
 }
 
 

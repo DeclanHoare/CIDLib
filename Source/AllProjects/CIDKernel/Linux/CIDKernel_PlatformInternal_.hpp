@@ -232,4 +232,5 @@ struct TThreadHandleImpl
     tCIDLib::TThreadId  tidThis;
     tCIDLib::EExitCodes eExit;
     tCIDLib::TBoolean   bJoined;
+    TKrnlEvent          kevDeath;
 };
