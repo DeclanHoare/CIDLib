@@ -65,9 +65,43 @@ tCIDLib::TBoolean
 TKrnlAudio::bEnumAudioDevices(          tCIDLib::TCh* const pszToFill
                                 , const tCIDLib::TCard4     c4BufLen)
 {
-    // <TBD-Linux>
-    TKrnlError::SetLastKrnlError(kKrnlErrs::errcGen_NotSupported);
-    return kCIDLib::False;
+    if (c4BufLen != 0)
+        pszToFill[0] = 0;
+
+    tCIDLib::TInt4 i4Total = 0;
+
+    // Pass -1 to start iteration
+    tCIDLib::TSInt iCard = -1;
+
+    while (kCIDLib::True)
+    {
+        if (::snd_card_next(&iCard) < 0)
+            return kCIDLib::False;
+
+        if (iCard == -1)
+            break;
+
+        tCIDLib::TSCh* pszCardName = nullptr;
+        if (::snd_card_get_name(iCard, &pszCardName) < 0)
+            return kCIDLib::False;
+
+        tCIDLib::TInt4 i4Printed = ::swprintf(pszToFill + i4Total,
+            c4BufLen - i4Total,
+            L"%s\n%d\n",
+            pszCardName,
+            iCard);
+
+        ::free(pszCardName);
+
+        // Error in swprintf
+        if (i4Printed == -1)
+            return kCIDLib::False;
+
+        i4Total += i4Printed;
+    }
+    while (iCard != -1); // -1 stored back to finish iteration
+
+    return kCIDLib::True;
 }
 
 

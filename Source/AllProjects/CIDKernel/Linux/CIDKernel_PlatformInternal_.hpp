@@ -29,6 +29,7 @@
 
 // Place all platform includes here, so the precompiled headers will be at
 // maximum efficiency.
+#include <alsa/asoundlib.h>
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <curses.h>

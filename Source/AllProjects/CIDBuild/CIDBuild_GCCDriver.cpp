@@ -518,7 +518,8 @@ tCIDLib::TVoid TGCCDriver::Link()
     {
         listParms.Add(new TBldStr(L"-lreadline"));
         listParms.Add(new TBldStr(L"-lhistory"));
-        listParms.Add(new TBldStr(L"-ldl"));                    
+        listParms.Add(new TBldStr(L"-ldl"));
+        listParms.Add(new TBldStr(L"-lasound"));
     }
 
     // And now all of the libraries, the system ones then ours
