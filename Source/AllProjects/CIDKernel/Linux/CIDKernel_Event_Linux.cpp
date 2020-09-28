@@ -121,15 +121,103 @@ TEventHandle::FormatToStr(          tCIDLib::TCh* const pszToFill
 // ---------------------------------------------------------------------------
 //  TKrnlEvent: Public, static methods
 // ---------------------------------------------------------------------------
+
+static inline tCIDLib::TVoid
+RemoveMultWait(TEventHandleImpl* pheviToRemoveFrom, TMultWait& mwToRemove)
+{
+    ::pthread_mutex_lock(&pheviToRemoveFrom->mtxThis);
+
+    if (pheviToRemoveFrom->kllistMultWaits.bResetCursor())
+    {
+        TMultWait* cur = nullptr;
+        while (pheviToRemoveFrom->kllistMultWaits.bNext(cur))
+        {
+            if (cur == &mwToRemove)
+            {
+                (void)pheviToRemoveFrom->kllistMultWaits.pobjOrphanCur();
+                break;
+            }
+        }
+    }
+
+    ::pthread_mutex_unlock(&pheviToRemoveFrom->mtxThis);
+}
+
 tCIDLib::TBoolean
 TKrnlEvent::bWaitMultiple(          TKrnlEvent&         kevOne
                             ,       TKrnlEvent&         kevTwo
                             ,       tCIDLib::TCard4&    c4Which
                             , const tCIDLib::TCard4     c4Wait)
 {
-    // <TBD>
-    TKrnlError::SetLastKrnlError(kKrnlErrs::errcGen_NotSupported);
-    return kCIDLib::False;
+    TMultWait mw;
+    tCIDLib::TOSErrCode HostErr = 0;
+
+    ::pthread_mutex_init(&mw.mtxThis, nullptr);
+    ::pthread_cond_init(&mw.condThis, nullptr);
+
+    ::pthread_mutex_lock(&mw.mtxThis);
+
+    tCIDLib::TBoolean already = kCIDLib::False;
+
+    ::pthread_mutex_lock(&kevOne.m_hevThis.m_pheviThis->mtxThis);
+    ::pthread_mutex_lock(&kevTwo.m_hevThis.m_pheviThis->mtxThis);
+
+    if (!kevOne.m_hevThis.m_pheviThis->bSet)
+    {
+        c4Which = 0;
+        already = kCIDLib::True;
+    }
+    else if (!kevTwo.m_hevThis.m_pheviThis->bSet)
+    {
+        c4Which = 1;
+        already = kCIDLib::True;
+    }
+    else
+    {
+        kevOne.m_hevThis.m_pheviThis->kllistMultWaits.pobjAddNew(&mw);
+        kevTwo.m_hevThis.m_pheviThis->kllistMultWaits.pobjAddNew(&mw);
+    }
+
+    ::pthread_mutex_unlock(&kevOne.m_hevThis.m_pheviThis->mtxThis);
+    ::pthread_mutex_unlock(&kevTwo.m_hevThis.m_pheviThis->mtxThis);
+
+    if (!already)
+    {
+        struct timespec TimeSpec;
+        TimeSpec.tv_sec = ::time(0) + (c4Wait / 1000);
+        TimeSpec.tv_nsec = (c4Wait % 1000) * 1000000;
+
+        while (mw.pkevWhich == nullptr && !HostErr)
+        {
+            HostErr = (c4Wait == kCIDLib::c4MaxWait)
+                ? ::pthread_cond_wait(&mw.condThis, &mw.mtxThis)
+                : ::pthread_cond_timedwait(&mw.condThis, &mw.mtxThis, &TimeSpec);
+        }
+
+        c4Which = kCIDLib::c4MaxCard;
+
+        if (mw.pkevWhich == &kevOne)
+            c4Which = 0;
+        else if (mw.pkevWhich == &kevTwo)
+            c4Which = 1;
+        
+        if (c4Which != 0)
+            RemoveMultWait(kevOne.m_hevThis.m_pheviThis, mw);
+        if (c4Which != 1)
+            RemoveMultWait(kevTwo.m_hevThis.m_pheviThis, mw);
+    }
+
+    ::pthread_mutex_unlock(&mw.mtxThis);
+
+    ::pthread_cond_destroy(&mw.condThis);
+    ::pthread_mutex_destroy(&mw.mtxThis);
+
+    if (HostErr)
+    {
+        TKrnlError::SetLastHostError(HostErr);
+        return kCIDLib::False;
+    }
+    return kCIDLib::True;
 }
 
 
@@ -446,6 +534,7 @@ tCIDLib::TBoolean TKrnlEvent::bTrigger()
             TKrnlError::SetLastHostError(errno);
             return kCIDLib::False;
         }
+        // <TBD> deal with multwaits
     }
     else
     {
@@ -453,6 +542,24 @@ tCIDLib::TBoolean TKrnlEvent::bTrigger()
 
         m_hevThis.m_pheviThis->bSet = kCIDLib::False;
         ::pthread_cond_broadcast(&m_hevThis.m_pheviThis->condThis);
+
+        // Wake up the multiple-wait threads.
+        // We orphan the data at the same time so the list will be
+        // cleared without the data being deleted, because it is just a
+        // stack variable in bWaitMultiple.
+        if (m_hevThis.m_pheviThis->kllistMultWaits.bResetCursor())
+        {
+            TMultWait* pMultWait = nullptr;
+            // To start iteration we have to call bNext() once.
+            m_hevThis.m_pheviThis->kllistMultWaits.bNext(pMultWait);
+            while ((pMultWait = m_hevThis.m_pheviThis->kllistMultWaits.pobjOrphanCur()) != nullptr)
+            {
+                ::pthread_mutex_lock(&pMultWait->mtxThis);
+                pMultWait->pkevWhich = this;
+                ::pthread_cond_signal(&pMultWait->condThis);
+                ::pthread_mutex_unlock(&pMultWait->mtxThis);
+            }
+        }
 
         ::pthread_mutex_unlock(&m_hevThis.m_pheviThis->mtxThis);
     }

@@ -131,19 +131,31 @@ struct TDirSearchHandleImpl
     tCIDLib::TSCh*      pszFileSpec;
 };
 
+struct TMultWait
+{
+    pthread_mutex_t     mtxThis;
+    pthread_cond_t      condThis;
+    TKrnlEvent*         pkevWhich = nullptr;
+};
+
 struct TEventHandleImpl
 {
     // Pthread stuff
-    pthread_mutex_t     mtxThis;
-    pthread_cond_t      condThis;
-    tCIDLib::TBoolean   bSet;
+    pthread_mutex_t             mtxThis;
+    pthread_cond_t              condThis;
+    tCIDLib::TBoolean           bSet;
 
     // System V IPC stuff, for named events
-    tCIDLib::TSInt      iSysVSemId;
-    tCIDLib::TBoolean   bSysVOwner;
+    tCIDLib::TSInt              iSysVSemId;
+    tCIDLib::TBoolean           bSysVOwner;
 
     // Standard handle stuff, enables bDuplicate() method
-    tCIDLib::TCard4     c4RefCount;
+    tCIDLib::TCard4             c4RefCount;
+
+    // Separate condition and mutex per call to bWaitMultiple that is
+    // currently happening on this event - since a thread can only
+    // wait on one posix condition at a time.
+    TKrnlLList<TMultWait>   kllistMultWaits;
 };
 
 struct TFileHandleImpl
