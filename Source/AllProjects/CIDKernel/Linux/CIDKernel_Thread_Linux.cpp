@@ -51,7 +51,7 @@ namespace CIDKernel_Thread_Linux
         tCIDLib::TVoid*         pUserData;
         TThread*                pthrStarting;
         TKrnlThread*            pkthrStarting;
-        pthread_mutex_t*        pmtxStart;
+        pthread_mutex_t         mtxStart;
         tCIDLib::TCh*           pszName;
         TKrnlEvent*             pkevDeath;
     };
@@ -96,11 +96,11 @@ namespace CIDKernel_Thread_Linux
         // We're waiting for the parent thread to initialize the thread
         // handle.
         //
-        ::pthread_mutex_lock(pData->pmtxStart);
+        ::pthread_mutex_lock(&pData->mtxStart);
 
         // Ok, it's done. Now clean up the mutex.
-        ::pthread_mutex_unlock(pData->pmtxStart);
-        ::pthread_mutex_destroy(pData->pmtxStart);
+        ::pthread_mutex_unlock(&pData->mtxStart);
+        ::pthread_mutex_destroy(&pData->mtxStart);
 
         //
         //  Set the thread info for the program error signals' benefit. This isn't a
@@ -448,7 +448,6 @@ TKrnlThread::bBeginThread(  const   TKrnlThread::TCallBack  pfnFunc
         return kCIDLib::False;
     }
 
-    pthread_mutex_t mtxStart = PTHREAD_MUTEX_INITIALIZER;
     if (!m_hthrThis.m_phthriThis->kevDeath.bCreate(tCIDLib::EEventStates::Reset, kCIDLib::False))
     {
         return kCIDLib::False;
@@ -459,12 +458,12 @@ TKrnlThread::bBeginThread(  const   TKrnlThread::TCallBack  pfnFunc
     pStartupData->pfnCallBack = pfnFunc;
     pStartupData->pUserData = pData;
     pStartupData->pthrStarting = pthrStart;
-    pStartupData->pmtxStart = &mtxStart;
     pStartupData->pszName = TRawStr::pszReplicate(pszThreadName);
     pStartupData->pkthrStarting = this;
     pStartupData->pkevDeath = &m_hthrThis.m_phthriThis->kevDeath;
 
-    ::pthread_mutex_lock(&mtxStart);
+    ::pthread_mutex_init(&pStartupData->mtxStart, nullptr);
+    ::pthread_mutex_lock(&pStartupData->mtxStart);
 
     tCIDLib::TOSErrCode HostErr = ::pthread_create
     (
@@ -476,8 +475,8 @@ TKrnlThread::bBeginThread(  const   TKrnlThread::TCallBack  pfnFunc
 
     if (HostErr)
     {
-        ::pthread_mutex_unlock(&mtxStart);
-        ::pthread_mutex_destroy(&mtxStart);
+        ::pthread_mutex_unlock(&pStartupData->mtxStart);
+        ::pthread_mutex_destroy(&pStartupData->mtxStart);
         delete [] pStartupData->pszName;
         delete pStartupData;
         TKrnlError::SetLastHostError(HostErr);
@@ -488,7 +487,7 @@ TKrnlThread::bBeginThread(  const   TKrnlThread::TCallBack  pfnFunc
 
     // The thread we just started is waiting on this, so it will
     // destroy the mutex.
-    ::pthread_mutex_unlock(&mtxStart);
+    ::pthread_mutex_unlock(&pStartupData->mtxStart);
 
     return kCIDLib::True;
 }
