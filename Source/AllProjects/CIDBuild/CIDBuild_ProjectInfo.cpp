@@ -1203,6 +1203,7 @@ TProjectInfo::ParseIncludePaths(const TBldStr& strOptions, TLineSpooler& lsplSou
         if (strReadBuf == L"END INCLUDEPATHS")
             break;
 
+        TBldStr* pstrIncludePath;
         //
         //  Have to assume its an include path. If it isn't fully qualified,
         //  then assume it is relative to the project source path. If if
@@ -1210,20 +1211,24 @@ TProjectInfo::ParseIncludePaths(const TBldStr& strOptions, TLineSpooler& lsplSou
         //
         if (TUtils::bIsFQPath(strReadBuf))
         {
-            m_listIncludePaths.Add(new TBldStr(strReadBuf));
+            pstrIncludePath = new TBldStr(strReadBuf);
         }
          else if (strReadBuf.bStartsWith(L"$(ProjDir)\\"))
         {
             TBldStr strTmp(m_strProjectDir);
             strTmp.AppendAt(strReadBuf, 11);
-            m_listIncludePaths.Add(new TBldStr(strTmp));
+            pstrIncludePath = new TBldStr(strTmp);
         }
          else
         {
             TBldStr strTmp(m_strProjectDir);
             strTmp.Append(strReadBuf);
-            m_listIncludePaths.Add(new TBldStr(strTmp));
+            pstrIncludePath = new TBldStr(strTmp);
         }
+
+        if (kCIDBuild::chProjectPathSep != kCIDBuild::chPathSep)
+            pstrIncludePath->ReplaceChar(kCIDBuild::chProjectPathSep, kCIDBuild::chPathSep);
+        m_listIncludePaths.Add(pstrIncludePath);
     }
 }
 
