@@ -31,7 +31,7 @@
 // -----------------------------------------------------------------------------
 //  Include underlying headers
 // -----------------------------------------------------------------------------
-#include    "CIDORB.hpp"
+#include    "CIDOrb.hpp"
 #include    "TestFWLib.hpp"
 
 #include    "TestORB_LoopbackServerBase.hpp"

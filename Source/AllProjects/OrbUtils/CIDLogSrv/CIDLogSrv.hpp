@@ -63,7 +63,7 @@
 //  Include our underlying headers
 // ---------------------------------------------------------------------------
 #include    "CIDOrbUC.hpp"
-#include    "CIDRegx.hpp"
+#include    "CIDRegX.hpp"
 
 
 // <TBD> Remove when done with debugging

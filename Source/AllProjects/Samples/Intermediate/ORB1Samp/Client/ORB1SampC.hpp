@@ -29,8 +29,8 @@
 #pragma once
 
 #include    "CIDLib.hpp"
-#include    "CIDORB.hpp"
-#include    "CIDORBUC.hpp"
+#include    "CIDOrb.hpp"
+#include    "CIDOrbUC.hpp"
 
 #include    "ORB1SampSh.hpp"
 
