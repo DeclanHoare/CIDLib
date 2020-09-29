@@ -66,6 +66,7 @@ TMD5Hash TUniqueId::mhashMakeId()
     if (!CIDCrypto_UniqueId::prandThread)
     {
         CIDCrypto_UniqueId::prandThread = new TRandomNum;
+        tCIDLib::TEncodedTime enctNow = TTime::enctNow();
 
         // Generate a seed for this guy
         tCIDLib::TCard4 c4Seed
@@ -76,7 +77,7 @@ TMD5Hash TUniqueId::mhashMakeId()
             ^ tCIDLib::TCard4(TProcess::pidThis())
             ^ tCIDLib::TCard4(TThread::tidCaller())
             ^ tCIDLib::TCard4(TTime::c8Millis() >> 17)
-            ^ tCIDLib::TCard4(TTime::enctNow() >> 7)
+            ^ tCIDLib::TCard4(reinterpret_cast<tCIDLib::TCard4&>(enctNow) >> 7)
         );
         const TString& strHostName = TSysInfo::strIPHostName();
         tCIDLib::TCard4 c4Len = strHostName.c4Length();
