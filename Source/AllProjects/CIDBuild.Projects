@@ -2028,7 +2028,7 @@ PROJECT=RandGen
     END DEPENDENTS
 END PROJECT
 
-PROJECT=Reg1
+PROJECT=Reg1 [WIN32_*]
     SETTINGS
         DIRECTORY   = Samples\Basic\Reg1
         SAMPLE      = Yes
