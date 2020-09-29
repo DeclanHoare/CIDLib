@@ -97,16 +97,8 @@ tCIDLib::TBoolean TKrnlTimeStamp::bIsDST(tCIDLib::TBoolean& bDSTState)
 
 tCIDLib::TBoolean TKrnlTimeStamp::bTZOffset(tCIDLib::TInt4& i4Ofs)
 {
-    timeval tv;
-    struct timezone tz;
-
-    if (::gettimeofday(&tv, &tz))
-    {
-        TKrnlError::SetLastHostError(errno);
-        return kCIDLib::False;                
-    }
-
-    i4Ofs = tz.tz_minuteswest;
+    tzset();
+    i4Ofs = timezone;
     return kCIDLib::True;
 }
 
@@ -114,16 +106,11 @@ tCIDLib::TBoolean TKrnlTimeStamp::bTZOffset(tCIDLib::TInt4& i4Ofs)
 tCIDLib::TBoolean
 TKrnlTimeStamp::bTZName(tCIDLib::TCh* pszToFill, const tCIDLib::TCard4 c4MaxChars)
 {
-    timeval tv;
-    struct timezone tz;
-
-    if (::gettimeofday(&tv, &tz))
-    {
-        TKrnlError::SetLastHostError(errno);
-        return kCIDLib::False;                        
-    }
-
-    return TRawStr::bFormatVal(tCIDLib::TInt4(tz.tz_minuteswest), pszToFill, c4MaxChars);
+    tCIDLib::TBoolean bDST;
+    tzset();
+    if (!bIsDST(bDST))
+        return kCIDLib::False;
+    TRawStr::pszConvert(tzname[bDST ? 1 : 0], pszToFill, c4MaxChars);
     return kCIDLib::True;
 }
 
