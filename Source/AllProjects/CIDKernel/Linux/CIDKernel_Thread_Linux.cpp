@@ -622,14 +622,13 @@ tCIDLib::TBoolean TKrnlThread::bSetPriority(const tCIDLib::EPrioLevels eLevel)
 tCIDLib::TBoolean
 TKrnlThread::bQueryExitCode(tCIDLib::EExitCodes& eToFill) const
 {
-    if (!::pthread_kill(m_hthrThis.m_phthriThis->tidThis, 0))
-    {
-        TKrnlError::SetLastKrnlError(kKrnlErrs::errcGen_StillRunning);
-        return kCIDLib::False;
-    }
-
     if (!m_hthrThis.m_phthriThis->bJoined)
     {
+        if (!::pthread_kill(m_hthrThis.m_phthriThis->tidThis, 0))
+        {
+            TKrnlError::SetLastKrnlError(kKrnlErrs::errcGen_StillRunning);
+            return kCIDLib::False;
+        }
         tCIDLib::TVoid* pHostExit = 0;
         tCIDLib::TOSErrCode HostErr = ::pthread_join(m_hthrThis.m_phthriThis->tidThis
                                                      , &pHostExit);
