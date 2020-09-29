@@ -39,17 +39,6 @@
 
 namespace CIDKernel_SystemInfo_Linux
 {
-    //
-    // These are used to pick off argc and argv as they go by. That way I don't have
-    // to try to reproduce the array provided by the startup code. The proc file
-    // system only provides the full command line, and using these global variables
-    // saves me a lot of possible errors involving parsing inconsistencies between
-    // me and Linux.
-    //
-    int argc = -1;
-    char** argv = 0;
-
-
     // ---------------------------------------------------------------------------
     //  Local types
     //
@@ -348,15 +337,45 @@ namespace CIDKernel_SystemInfo_Linux
         return kCIDLib::True;
     }
 
-    tCIDLib::TVoid InitArgArray()
+    tCIDLib::TBoolean bInitArgArray()
     {
-        CachedInfo.c4ArgCnt = CIDKernel_SystemInfo_Linux::argc;
-        for (tCIDLib::TCard4 c4Idx = 0; c4Idx < CachedInfo.c4ArgCnt; c4Idx++)
+        FILE* CmdLineFile = ::fopen("/proc/self/cmdline", "rb");
+        if (!CmdLineFile)
         {
-            CachedInfo.apszArgList[c4Idx] =
-                TRawStr::pszConvert(CIDKernel_SystemInfo_Linux::argv[c4Idx]);
+            TKrnlError::SetLastHostError(errno);
+            return kCIDLib::False;
         }
-        CIDKernel_SystemInfo_Linux::argc = -1;
+
+        tCIDLib::TSCh schCmdLine[MAX_ARG_STRLEN];
+        size_t CmdLineSize = ::fread(schCmdLine, 1, sizeof(schCmdLine), CmdLineFile);
+        if (CmdLineSize == 0)
+        {
+            TKrnlError::SetLastHostError(errno);
+            ::fclose(CmdLineFile);
+            return kCIDLib::False;
+        }
+        ::fclose(CmdLineFile);
+        if (schCmdLine[CmdLineSize - 1] != 0)
+        {
+            TKrnlError::SetLastKrnlError(kKrnlErrs::errcData_InvalidFormat);
+            return kCIDLib::False;
+        }
+
+        CachedInfo.c4ArgCnt = 0;
+
+        tCIDLib::TSCh* pszCur = schCmdLine;
+        tCIDLib::TSCh* pszEnd = schCmdLine + CmdLineSize;
+        while (pszCur < pszEnd)
+        {
+            if (CachedInfo.c4ArgCnt >= kCIDLib::c4MaxCmdLineParms)
+            {
+                TKrnlError::SetLastKrnlError(kKrnlErrs::errcGen_TooMany);
+                return kCIDLib::False;
+            }
+            CachedInfo.apszArgList[CachedInfo.c4ArgCnt++] = TRawStr::pszConvert(pszCur);
+            pszCur += strlen(pszCur) + 1;
+        }
+        return kCIDLib::True;
     }
 }
 
@@ -403,6 +422,9 @@ TCIDKrnlModule::bInitTermSysInfo(const tCIDLib::EInitTerm eInitTerm)
         // Get the unique machine id
         if (!CIDKernel_SystemInfo_Linux::bQueryMachineId())
             return kCIDLib::False;
+
+        if (!CIDKernel_SystemInfo_Linux::bInitArgArray())
+            return kCIDLib::False;
     }
 
     return kCIDLib::True;
@@ -417,9 +439,6 @@ tCIDLib::TBoolean
 TKrnlSysInfo::bCmdLineArg(  const   tCIDLib::TCard4 c4Index
                             ,       TKrnlString&    kstrToFill)
 {
-    if (CIDKernel_SystemInfo_Linux::argc != -1)
-        CIDKernel_SystemInfo_Linux::InitArgArray();
-
     if (c4Index >= CIDKernel_SystemInfo_Linux::CachedInfo.c4ArgCnt)
     {
         TKrnlError::SetLastKrnlError(kKrnlErrs::errcGen_IndexError);
@@ -486,9 +505,6 @@ TKrnlSysInfo::bQueryUserName(TKrnlString& kstrToFill)
 tCIDLib::TBoolean
 TKrnlSysInfo::bRemoveCmdLineArg(const tCIDLib::TCard4 c4Index)
 {
-    if (CIDKernel_SystemInfo_Linux::argc != -1)
-        CIDKernel_SystemInfo_Linux::InitArgArray();
-
     if (!c4Index || (c4Index >= CIDKernel_SystemInfo_Linux::CachedInfo.c4ArgCnt))
     {
         TKrnlError::SetLastKrnlError(kKrnlErrs::errcGen_IndexError);
@@ -537,9 +553,6 @@ tCIDLib::TCard4 TKrnlSysInfo::c4CPUCount()
 
 tCIDLib::TCard4 TKrnlSysInfo::c4CmdLineArgCount()
 {
-    if (CIDKernel_SystemInfo_Linux::argc != -1)
-        CIDKernel_SystemInfo_Linux::InitArgArray();
-
     return CIDKernel_SystemInfo_Linux::CachedInfo.c4ArgCnt;
 }
 

@@ -40,6 +40,7 @@
 #include <fnmatch.h>
 #include <langinfo.h>
 #include <limits.h>
+#include <linux/binfmts.h>
 
 //
 //  An error in the headers, this is also included in socket.h below and 
@@ -70,6 +71,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/user.h>
 #include <sys/utsname.h>
 #include <sys/vfs.h>
 #include <sys/wait.h>
