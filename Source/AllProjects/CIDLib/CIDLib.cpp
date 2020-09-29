@@ -57,6 +57,8 @@ RTTIDecls(TSafeInt4Counter,TObject)
 //  For those collections types that we pre-instantiate we have to force their
 //  implementations here. This will save much overhead throughout the system.
 // ---------------------------------------------------------------------------
+template class CIDLIBEXP TBag<TString>;
+
 template class CIDLIBEXP TBasicTreeCol<TKeyValuePair>;
 
 template class CIDLIBEXP TFundArray<tCIDLib::TBoolean>;
