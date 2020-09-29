@@ -60,5 +60,5 @@ echo -ne "\033]0;CIDLib[${CID_BUILDMODE}, ${CID_VERSION}]\007"
 export TestVar1=The value of TestVar1
 export TestVar2=The value of TestVar2
 
-alias="cidccd.sh setdir"
+alias ccd="source cidccd.sh setdir"
 

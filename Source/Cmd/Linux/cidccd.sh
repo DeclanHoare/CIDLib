@@ -6,7 +6,7 @@
 #
 function setdir() {
     tardir=$1
-    if [ -z $tardir ] || [ "$tardir" == "" ]; then
+    if [ -z $tardir ] || [ "$tardir" = "" ]; then
         echo You must provide a target directory
         return 1
     fi
